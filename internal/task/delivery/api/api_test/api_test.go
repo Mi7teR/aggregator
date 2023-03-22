@@ -41,7 +41,6 @@ func TestTask(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer wg.Done()
 		if r.Method != http.MethodPost {
 			t.Errorf("Expected to request with method POST, got: %s", r.Method)
 		}
@@ -53,6 +52,7 @@ func TestTask(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`1234567890`)) //nolint:errcheck // we dont test it :)
+		wg.Done()
 	}))
 	defer server.Close()
 
@@ -95,8 +95,9 @@ func TestTask(t *testing.T) {
 		id = responseJSON.ID
 	})
 
+	wg.Wait()
+	time.Sleep(time.Second)
 	t.Run("get task", func(t *testing.T) {
-		wg.Wait()
 		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/task/%s", id), nil)
 		if err != nil {
 			t.Errorf("expected to create request, got %v", err)
@@ -120,7 +121,7 @@ func TestTask(t *testing.T) {
 					"text/plain; charset=utf-8",
 				},
 				"Date": {
-					time.Now().UTC().Format(http.TimeFormat),
+					time.Now().Add(-time.Second).UTC().Format(http.TimeFormat),
 				},
 			},
 			Length: 10,
